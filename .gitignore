@@ -1,0 +1,23 @@
+# Dependencies / build
+node_modules/
+dist/
+build/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# Local secrets (never commit tokens)
+*.token
+.env
+secrets.json
+
+# Python
+__pycache__/
+*.pyc

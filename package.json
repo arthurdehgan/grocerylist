@@ -1,0 +1,15 @@
+{
+  "name": "grocery-list",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Shared grocery list PWA for two people (GitHub as datastore)",
+  "scripts": {
+    "test": "node tests/sync.test.js && node tests/dom.test.js",
+    "test:sync": "node tests/sync.test.js",
+    "test:dom": "node tests/dom.test.js",
+    "serve": "python -m http.server 8080"
+  },
+  "devDependencies": {
+    "jsdom": "^25.0.0"
+  }
+}

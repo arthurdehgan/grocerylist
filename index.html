@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#2e7d32" />
+  <meta name="description" content="Shared grocery list for two" />
+  <title>Grocery</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Pairing / settings screen -->
+  <section id="setup" class="screen" hidden>
+    <form id="setup-form" class="card" autocomplete="off">
+      <h1>Grocery</h1>
+      <p class="hint">Connect both phones to one shared list.</p>
+
+      <label for="token">GitHub token</label>
+      <input id="token" type="password" placeholder="github_pat_…" spellcheck="false" />
+
+      <label for="repo">Private data repo</label>
+      <input id="repo" type="text" placeholder="yourname/grocery-data" autocapitalize="none" spellcheck="false" />
+      <p class="hint small">The private repo holding your list. Both phones use the same one.</p>
+
+      <label for="code">Pairing code</label>
+      <div class="row">
+        <input id="code" type="text" placeholder="e.g. kitchen7" autocapitalize="none" spellcheck="false" maxlength="32" />
+        <button type="button" id="new-code" class="ghost" title="Generate random code">Random</button>
+      </div>
+
+      <div class="row actions">
+        <button type="button" id="btn-create" class="primary">Create list</button>
+        <button type="submit" id="btn-join" class="secondary">Join</button>
+      </div>
+
+      <p id="setup-msg" class="msg"></p>
+      <details class="help">
+        <summary>How do I get a token?</summary>
+        <p>Private repo → Settings → Developer settings → Fine-grained tokens →
+        Contents: Read and write. Paste it above. It is stored only on this device.</p>
+      </details>
+    </form>
+  </section>
+
+  <!-- Main list screen -->
+  <main id="app" class="screen" hidden>
+    <header class="appbar">
+      <h1 id="list-title">Grocery</h1>
+      <div class="grow"></div>
+      <span id="sync-status" class="sync" title="Sync status">…</span>
+      <button id="btn-settings" class="icon" title="Settings" aria-label="Settings">⚙</button>
+    </header>
+
+    <div class="tabs" id="tabs" hidden></div>
+
+    <form id="add-form" class="addbar" autocomplete="off">
+      <input id="add-input" type="text" placeholder="Add an item…" maxlength="120" enterkeyhint="done" />
+      <button type="submit" class="add-btn" aria-label="Add item">＋</button>
+    </form>
+
+    <ul id="items" class="items"></ul>
+    <div id="empty" class="empty" hidden>
+      <p>Nothing on the list yet.</p>
+    </div>
+
+    <nav id="detail" class="detail" hidden>
+      <div class="sheet">
+        <label for="edit-name">Item</label>
+        <input id="edit-name" type="text" maxlength="120" />
+        <label for="edit-qty">Quantity <span class="opt">(optional)</span></label>
+        <input id="edit-qty" type="text" maxlength="20" placeholder="e.g. 2, 500g" />
+        <div class="row actions">
+          <button type="button" id="detail-cancel" class="ghost">Cancel</button>
+          <button type="button" id="detail-save" class="primary">Save</button>
+        </div>
+        <button type="button" id="detail-delete" class="danger">Delete item</button>
+      </div>
+    </nav>
+  </main>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <script src="sync.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -64,6 +64,35 @@ replays on reconnect                   ▲                              show ite
 > token can edit. Keep both private. The token is stored only in that device's
 > browser storage.
 
+## Android app (APK)
+
+The PWA can also be installed as a native app. `android/` holds a thin WebView shell
+that loads the app from `assets/` on a synthetic `https://appassets.androidplatform.net`
+origin, so `localStorage` is reliable and `fetch()` to `api.github.com` works. The
+assets are bundled in the APK, so the shell itself needs no network — only sync does.
+
+```powershell
+# Build a signed APK (needs Android SDK: build-tools 36, platform android-37, JDK 17)
+powershell -ExecutionPolicy Bypass -File android\build.ps1
+# -> android/build/grocery.apk
+
+# Install on a connected device
+adb install -r android\build\grocery.apk
+```
+
+`build.ps1` re-copies `index.html`, `app.js`, `sync.js`, `styles.css`,
+`manifest.webmanifest`, `sw.js` and `icons/` from the repo root, so always rebuild
+after changing the web app.
+
+**Signing key.** `android/keystore/grocery.keystore` (gitignored) signs the build.
+Android refuses to install an update signed with a *different* key, so keep this file
+backed up. Losing it means uninstalling and reinstalling the app (local settings are
+lost, but the shared list is unaffected — it lives in the GitHub repo).
+
+The APK is much less convenient to update than the PWA (no instant rollout), so for
+everyday use the installed PWA from GitHub Pages is recommended; the APK is for when
+you want a launcher icon with no browser chrome.
+
 ## Development
 
 Zero build step. Serve the folder over HTTP (PWA features need `http://localhost` or
@@ -95,7 +124,8 @@ sync.js               Op model, LWW reduce, GitHub Contents API client
 manifest.webmanifest  PWA manifest (installable)
 sw.js                 Offline app-shell cache
 icons/                Generated PWA icons (192/512/maskable)
-tools/make_icons.py   Icon generator (pure-Python PNG writer)
+android/              Native WebView shell + build script (see "Android app")
+tools/                Icon generators (pure-Python PNG writers)
 tests/                Unit + DOM tests (jsdom)
 ```
 

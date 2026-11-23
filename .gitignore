@@ -3,6 +3,18 @@ node_modules/
 dist/
 build/
 
+# Built APK (install locally; rebuild with android/build.ps1)
+grocery.apk
+
+# Android build artifacts (regenerate with android/build.ps1)
+android/build/
+android/assets/
+android/local.properties
+
+# Signing key — NEVER commit. Keep it safe: Android refuses to install an
+# update signed with a different key, so losing this means uninstall+reinstall.
+android/keystore/
+
 # OS
 .DS_Store
 Thumbs.db

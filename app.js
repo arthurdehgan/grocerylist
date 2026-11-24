@@ -16,10 +16,15 @@
     app: $('#app'),
     listTitle: $('#list-title'),
     syncStatus: $('#sync-status'),
+    syncAnnounce: $('#sync-announce'),
     btnSettings: $('#btn-settings'),
     tabs: $('#tabs'),
     addForm: $('#add-form'),
     addInput: $('#add-input'),
+    listWrap: $('#list-wrap'),
+    listContent: $('#list-content'),
+    pullIndicator: $('#pull-indicator'),
+    pullLabel: $('#pull-label'),
     items: $('#items'),
     empty: $('#empty'),
     detail: $('#detail'),
@@ -28,12 +33,26 @@
     detailCancel: $('#detail-cancel'),
     detailSave: $('#detail-save'),
     detailDelete: $('#detail-delete'),
+    syncSheet: $('#sync-sheet'),
+    syncSheetTitle: $('#sync-sheet-title'),
+    syncSheetMessage: $('#sync-sheet-message'),
+    syncSheetClose: $('#sync-sheet-close'),
+    syncSheetRetry: $('#sync-sheet-retry'),
     toast: $('#toast'),
   };
 
   let editing = null; // { listId, itemId }
   let currentDoc = null;
   let toastTimer = null;
+  let syncInfo = { status: 'ok', error: '' };
+  let pullY = 0;
+  let pullTouch = null;
+  let refreshing = false;
+  let suppressClick = false;
+  let suppressTimer = null;
+  const PULL_THRESHOLD = 64;
+  const MAX_PULL = 96;
+  const PULL_HEIGHT = 44;
 
   /* ---------- store ---------- */
   const store = window.GrocerySync({
@@ -69,7 +88,7 @@
     els.setup.hidden = true;
     els.app.hidden = false;
     currentDoc = store.state();
-    render(currentDoc, { status: store.lastError ? 'error' : 'ok' });
+    render(currentDoc, { status: store.lastError ? 'error' : 'syncing' });
     store.startPolling();
     store.syncOnce();
   }
@@ -296,16 +315,167 @@
 
   /* ---------- sync status + toast ---------- */
   function setSyncStatus(status, error) {
-    if (status === 'error') {
-      els.syncStatus.className = 'sync err';
-      els.syncStatus.textContent = '⚠';
-      els.syncStatus.title = error || 'Sync error';
-    } else {
-      els.syncStatus.className = 'sync ok';
-      els.syncStatus.textContent = '●';
-      els.syncStatus.title = 'Synced';
+    status = status || 'ok';
+    error = error || '';
+    const changed = syncInfo.status !== status || syncInfo.error !== error;
+    syncInfo = { status: status, error: error };
+
+    els.syncStatus.className = 'sync ' + status;
+    const label = status === 'syncing' ? 'Syncing…'
+      : status === 'offline' ? 'Offline — changes saved on this device'
+      : status === 'error' ? 'Sync failed'
+      : 'Synced';
+    els.syncStatus.setAttribute('aria-label', label);
+    els.syncStatus.title = status === 'error' && error ? 'Sync failed: ' + error : label;
+    if (changed && els.syncAnnounce) els.syncAnnounce.textContent = label;
+    if (!els.syncSheet.hidden) {
+      if (status === 'error' || status === 'offline') renderSyncSheet();
+      else closeSyncSheet();
     }
   }
+
+  function renderSyncSheet() {
+    const offline = syncInfo.status === 'offline';
+    els.syncSheetTitle.textContent = offline ? 'You’re offline' : 'Sync problem';
+    els.syncSheetMessage.textContent = syncInfo.error ||
+      (offline
+        ? 'Changes are saved on this device. They will sync when you reconnect.'
+        : 'The list could not be synced. Check your connection and token, then try again.');
+  }
+
+  function openSyncSheet() {
+    renderSyncSheet();
+    els.syncSheet.hidden = false;
+    setTimeout(function () { els.syncSheetRetry.focus(); }, 30);
+  }
+
+  function closeSyncSheet() {
+    els.syncSheet.hidden = true;
+  }
+
+  els.syncStatus.addEventListener('click', function () {
+    if (syncInfo.status === 'error' || syncInfo.status === 'offline') {
+      openSyncSheet();
+    } else {
+      store.syncOnce();
+    }
+  });
+
+  els.syncSheetClose.addEventListener('click', closeSyncSheet);
+  els.syncSheet.addEventListener('click', function (e) {
+    if (e.target === els.syncSheet) closeSyncSheet();
+  });
+  els.syncSheetRetry.addEventListener('click', async function () {
+    closeSyncSheet();
+    const ok = await store.syncOnce();
+    toast(ok ? 'Synced' : 'Sync failed: ' + (store.lastError || 'Please try again'));
+  });
+
+  /* ---------- pull to sync ---------- */
+  function setPull(px) {
+    const y = Math.max(0, Math.min(MAX_PULL, px));
+    pullY = y;
+    els.listContent.style.transform = y ? 'translateY(' + y + 'px)' : '';
+    const indicatorY = Math.max(0, y - PULL_HEIGHT);
+    els.pullIndicator.style.transform = 'translateY(' + indicatorY + 'px)';
+    els.pullIndicator.style.opacity = String(Math.min(1, y / 48));
+  }
+
+  function setPullLabel(text, mode) {
+    els.pullLabel.textContent = text;
+    els.pullIndicator.classList.remove('idle', 'ready', 'syncing', 'done');
+    els.pullIndicator.classList.add(mode || 'idle');
+  }
+
+  async function refreshFromPull() {
+    if (refreshing) return;
+    refreshing = true;
+    setPull(PULL_HEIGHT);
+    setPullLabel('Syncing…', 'syncing');
+    const ok = await store.syncOnce();
+    refreshing = false;
+    if (ok) {
+      setPullLabel('Up to date', 'done');
+      setTimeout(function () {
+        if (!refreshing && !pullTouch && pullY >= PULL_HEIGHT) {
+          setPull(0);
+          setPullLabel('Pull to sync', 'idle');
+        }
+      }, 650);
+    } else {
+      setPull(0);
+      setPullLabel('Pull to sync', 'idle');
+      toast('Sync failed: ' + (store.lastError || 'Please try again'));
+    }
+  }
+
+  function endPull() {
+    if (!pullTouch) return;
+    const wasActive = pullTouch.active;
+    const pull = pullTouch.pull;
+    pullTouch = null;
+    if (!wasActive) return;
+
+    els.listWrap.classList.remove('dragging');
+    if (pull > 8) {
+      suppressClick = true;
+      clearTimeout(suppressTimer);
+      suppressTimer = setTimeout(function () { suppressClick = false; }, 400);
+    }
+    if (pull >= PULL_THRESHOLD && !refreshing) {
+      refreshFromPull();
+    } else {
+      setPull(0);
+      setPullLabel('Pull to sync', 'idle');
+    }
+  }
+
+  els.listWrap.addEventListener('touchstart', function (e) {
+    if (refreshing || !els.detail.hidden || e.touches.length !== 1) return;
+    if (els.listWrap.scrollTop > 0) return;
+    const t = e.touches[0];
+    pullTouch = { startX: t.clientX, startY: t.clientY, active: false, pull: 0 };
+  }, { passive: true });
+
+  els.listWrap.addEventListener('touchmove', function (e) {
+    if (!pullTouch || refreshing) return;
+    if (e.touches.length !== 1) return;
+    const t = e.touches[0];
+    const dy = t.clientY - pullTouch.startY;
+    const dx = t.clientX - pullTouch.startX;
+
+    if (!pullTouch.active) {
+      if (dy <= 0) return;
+      if (Math.abs(dx) > Math.abs(dy)) { pullTouch = null; return; }
+      if (els.listWrap.scrollTop > 0) { pullTouch = null; return; }
+      pullTouch.active = true;
+      els.listWrap.classList.add('dragging');
+    }
+
+    if (dy <= 0) {
+      pullTouch.pull = 0;
+      setPull(0);
+      setPullLabel('Pull to sync', 'idle');
+      return;
+    }
+
+    if (e.cancelable) e.preventDefault();
+    const y = Math.min(MAX_PULL, dy * 0.55);
+    pullTouch.pull = y;
+    setPull(y);
+    setPullLabel(y >= PULL_THRESHOLD ? 'Release to sync' : 'Pull to sync',
+      y >= PULL_THRESHOLD ? 'ready' : 'idle');
+  }, { passive: false });
+
+  els.listWrap.addEventListener('touchend', endPull);
+  els.listWrap.addEventListener('touchcancel', endPull);
+
+  els.listWrap.addEventListener('click', function (e) {
+    if (!suppressClick) return;
+    suppressClick = false;
+    e.preventDefault();
+    e.stopPropagation();
+  }, true);
 
   function toast(msg) {
     els.toast.textContent = msg;

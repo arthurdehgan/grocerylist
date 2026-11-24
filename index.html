@@ -50,8 +50,26 @@
     <header class="appbar">
       <h1 id="list-title">Grocery</h1>
       <div class="grow"></div>
-      <span id="sync-status" class="sync" title="Sync status">…</span>
+      <button id="sync-status" class="sync ok" type="button" title="Sync status" aria-label="Synced">
+        <svg class="sync-svg syncing-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M20 12a8 8 0 0 1-13.7 5.7M4 12a8 8 0 0 1 13.7-5.7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+          <path d="M17 3v4h-4M7 21v-4h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        <svg class="sync-svg ok-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M5 12.5l4.2 4.2L19 6.8" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        <svg class="sync-svg error-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 3.5L21 20H3L12 3.5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+          <path d="M12 9v5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
+          <circle cx="12" cy="17.2" r="1.1" fill="currentColor" />
+        </svg>
+        <svg class="sync-svg offline-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 8.5A5.5 5.5 0 0 1 9.5 3h.8a6.5 6.5 0 0 1 6 4.2A4.5 4.5 0 0 1 19 15.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+          <path d="M4 4l16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+        </svg>
+      </button>
       <button id="btn-settings" class="icon" title="Settings" aria-label="Settings">⚙</button>
+      <span id="sync-announce" class="sr-only" aria-live="polite"></span>
     </header>
 
     <div class="tabs" id="tabs" hidden></div>
@@ -61,9 +79,25 @@
       <button type="submit" class="add-btn" aria-label="Add item">＋</button>
     </form>
 
-    <ul id="items" class="items"></ul>
-    <div id="empty" class="empty" hidden>
-      <p>Nothing on the list yet.</p>
+    <div id="list-wrap" class="list-wrap">
+      <div id="pull-indicator" class="pull-indicator idle" aria-hidden="true">
+        <svg class="pull-svg pull-arrow" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 4v13m0 0l-5-5m5 5l5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        <svg class="pull-svg pull-spinner" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray="30 20" />
+        </svg>
+        <svg class="pull-svg pull-check" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M5 12.5l4.2 4.2L19 6.8" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        <span id="pull-label">Pull to sync</span>
+      </div>
+      <div id="list-content" class="list-content">
+        <ul id="items" class="items"></ul>
+        <div id="empty" class="empty" hidden>
+          <p>Nothing on the list yet.</p>
+        </div>
+      </div>
     </div>
 
     <nav id="detail" class="detail" hidden>
@@ -77,6 +111,17 @@
           <button type="button" id="detail-save" class="primary">Save</button>
         </div>
         <button type="button" id="detail-delete" class="danger">Delete item</button>
+      </div>
+    </nav>
+
+    <nav id="sync-sheet" class="detail" hidden>
+      <div class="sheet">
+        <h2 id="sync-sheet-title">Sync problem</h2>
+        <p id="sync-sheet-message" class="sync-message"></p>
+        <div class="row actions">
+          <button type="button" id="sync-sheet-close" class="ghost">Close</button>
+          <button type="button" id="sync-sheet-retry" class="primary">Retry sync</button>
+        </div>
       </div>
     </nav>
   </main>

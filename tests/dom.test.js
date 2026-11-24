@@ -60,6 +60,23 @@ function makeMock() {
   const $ = (s) => document.querySelector(s);
   const $$ = (s) => Array.from(document.querySelectorAll(s));
 
+  function touch(type, y, x) {
+    const e = new window.Event(type, { bubbles: true, cancelable: true });
+    Object.defineProperty(e, 'touches', {
+      value: type === 'touchend' ? [] : [{ clientX: x || 100, clientY: y }],
+    });
+    return e;
+  }
+
+  function pullToRefresh() {
+    const wrap = $('#list-wrap');
+    wrap.dispatchEvent(touch('touchstart', 100));
+    wrap.dispatchEvent(touch('touchmove', 260));
+    const label = $('#pull-label').textContent;
+    if (label !== 'Release to sync') throw new Error('pull gesture should arm release-to-sync, got: ' + label);
+    wrap.dispatchEvent(touch('touchend', 260));
+  }
+
   // ---- setup screen should be visible initially ----
   if (document.querySelector('#setup').hidden) throw new Error('setup screen should be visible on first run');
   if (!document.querySelector('#app').hidden) throw new Error('app should be hidden before pairing');
@@ -161,6 +178,44 @@ function makeMock() {
   if (rows2.length !== 1) throw new Error('device 2 should see 1 item after sync, got ' + rows2.length);
   if (rows2[0].querySelector('.name').textContent !== 'Milk') throw new Error('device 2 item mismatch');
 
+  // ---- status icon shows syncing while a request is in flight ----
+  const liveFetch = window.fetch;
+  window.fetch = async function (url, options) {
+    const res = await liveFetch(url, options);
+    await new Promise((r) => setTimeout(r, 80));
+    return res;
+  };
+  document.querySelector('#sync-status').click();
+  await new Promise((r) => setTimeout(r, 20));
+  if (!document.querySelector('#sync-status').classList.contains('syncing')) {
+    throw new Error('status should show syncing during a request');
+  }
+  await new Promise((r) => setTimeout(r, 150));
+  if (!document.querySelector('#sync-status').classList.contains('ok')) {
+    throw new Error('status should return to synced after the request');
+  }
+  window.fetch = liveFetch;
+
+  // ---- status icon opens a readable error sheet ----
+  window.fetch = () => Promise.reject(new Error('network down'));
+  document.querySelector('#sync-status').click();
+  await new Promise((r) => setTimeout(r, 80));
+  if (!document.querySelector('#sync-status').classList.contains('error')) {
+    throw new Error('status should show error after a failed sync');
+  }
+  document.querySelector('#sync-status').click();
+  await new Promise((r) => setTimeout(r, 20));
+  if (document.querySelector('#sync-sheet').hidden) throw new Error('error status should open the sync sheet');
+  if (!document.querySelector('#sync-sheet-message').textContent.includes('network down')) {
+    throw new Error('sync sheet should explain the error');
+  }
+  window.fetch = liveFetch;
+  document.querySelector('#sync-sheet-retry').click();
+  await new Promise((r) => setTimeout(r, 150));
+  if (!document.querySelector('#sync-status').classList.contains('ok')) {
+    throw new Error('retry should recover the status');
+  }
+
   // ---- offline edit on device 2, then reconnect sync ----
   // Simulate offline: point fetch to reject.
   const goodFetch = w2.fetch;
@@ -184,7 +239,21 @@ function makeMock() {
   const names1 = Array.from(document.querySelectorAll('#items .item .name')).map((n) => n.textContent);
   if (!names1.includes('Bread')) throw new Error('device 1 should receive offline-added Bread, got: ' + names1.join(','));
 
-  console.log('ok - DOM smoke: boot, add, check->bottom, edit qty, uncheck, delete, 2-device join, offline edit + reconcile');
+  // ---- pull-to-refresh pushes a local edit immediately ----
+  window.fetch = () => Promise.reject(new Error('offline'));
+  addInput.value = 'Apples';
+  document.querySelector('#add-form').dispatchEvent(new window.Event('submit', { cancelable: true, bubbles: true }));
+  await new Promise((r) => setTimeout(r, 60));
+  window.fetch = liveFetch;
+  pullToRefresh();
+  await new Promise((r) => setTimeout(r, 300));
+
+  w2.dispatchEvent(new w2.Event('online'));
+  await new Promise((r) => setTimeout(r, 300));
+  const names2 = Array.from(w2.document.querySelectorAll('#items .item .name')).map((n) => n.textContent);
+  if (!names2.includes('Apples')) throw new Error('device 2 should receive pull-to-refresh Apples, got: ' + names2.join(','));
+
+  console.log('ok - DOM smoke: boot, add, check->bottom, edit qty, uncheck, delete, 2-device join, offline edit + reconcile, sync status + error sheet, pull-to-refresh');
   console.log('\nAll DOM tests passed.');
   process.exit(0);
 })().catch((e) => {

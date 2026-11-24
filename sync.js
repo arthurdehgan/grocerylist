@@ -111,7 +111,9 @@
     opts = opts || {};
     const logKey = opts.logKey || 'grocery.ops';
     const cfgKey = opts.cfgKey || 'grocery.config';
-    const fetchImpl = opts.fetch || global.fetch.bind(global);
+    const fetchImpl = opts.fetch || function (url, options) {
+      return global.fetch(url, options);
+    };
     const onChange = opts.onChange || function () {};
 
     let ops = loadJSON(logKey, []);
@@ -120,6 +122,10 @@
     let lastPushedIds = new Set();
     let pollTimer = null;
     let lastError = null;
+    let syncPromise = null;
+    let queuedSync = false;
+    let onlineHandler = null;
+    let visibilityHandler = null;
 
     function loadJSON(key, fallback) {
       try { return JSON.parse(global.localStorage.getItem(key)) ?? fallback; }
@@ -151,7 +157,7 @@
       op.id = op.id || uid();
       ops.push(op);
       saveJSON(logKey, ops);
-      onChange(state(), { status: lastError ? 'error' : 'ok' });
+      onChange(state(), { status: config ? 'syncing' : 'ok' });
       scheduleFlush();
       return op;
     }
@@ -242,7 +248,7 @@
       }
       if (added) {
         saveJSON(logKey, ops);
-        onChange(state(), { status: lastError ? 'error' : 'ok' });
+        onChange(state(), { status: 'syncing' });
       }
     }
 
@@ -261,8 +267,18 @@
       return false;
     }
 
-    async function syncOnce() {
-      if (!config) return;
+    function isOnline() {
+      return !global.navigator || global.navigator.onLine !== false;
+    }
+
+    async function runSyncOnce() {
+      if (!isOnline()) {
+        lastError = 'Offline — changes are saved on this device and will sync when you reconnect.';
+        onChange(state(), { status: 'offline', error: lastError });
+        return false;
+      }
+
+      onChange(state(), { status: 'syncing' });
       try {
         await pull();
         if (hasPending()) {
@@ -280,10 +296,34 @@
         }
         lastError = null;
         onChange(state(), { status: 'ok' });
+        return true;
       } catch (e) {
         lastError = e.message || String(e);
         onChange(state(), { status: 'error', error: lastError });
+        return false;
       }
+    }
+
+    function syncOnce() {
+      if (!config) return Promise.resolve(false);
+      if (syncPromise) {
+        // A sync is already running. Mark that another pass is needed so edits
+        // made while it was in flight are not left waiting for the next poll.
+        queuedSync = true;
+        return syncPromise;
+      }
+
+      syncPromise = (async function () {
+        let ok = false;
+        do {
+          queuedSync = false;
+          ok = await runSyncOnce();
+        } while (queuedSync);
+        return ok;
+      })().finally(function () {
+        syncPromise = null;
+      });
+      return syncPromise;
     }
 
     let flushTimer = null;
@@ -296,14 +336,20 @@
     function startPolling() {
       stopPolling();
       pollTimer = setInterval(function () { syncOnce(); }, POLL_MS);
-      global.addEventListener('online', function () { syncOnce(); });
-      global.addEventListener('visibilitychange', function () {
+      onlineHandler = function () { syncOnce(); };
+      visibilityHandler = function () {
         if (global.document && global.document.visibilityState === 'visible') syncOnce();
-      });
+      };
+      global.addEventListener('online', onlineHandler);
+      global.addEventListener('visibilitychange', visibilityHandler);
     }
     function stopPolling() {
       if (pollTimer) clearInterval(pollTimer);
       pollTimer = null;
+      if (onlineHandler) global.removeEventListener('online', onlineHandler);
+      if (visibilityHandler) global.removeEventListener('visibilitychange', visibilityHandler);
+      onlineHandler = null;
+      visibilityHandler = null;
     }
 
     /* ---- pairing ---- */

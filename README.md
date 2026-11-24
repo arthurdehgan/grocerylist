@@ -36,6 +36,11 @@ replays on reconnect                   ▲                              show ite
 - Removals are tombstones (an op), so a deleted item doesn't reappear from the other
   phone's cached copy.
 
+The header status icon shows what sync is doing: a check means up to date, a
+spinner means syncing, a cloud-off icon means the device is offline, and a red
+warning triangle means the last sync failed. Tap the warning to read the error and
+retry. Pull down on the list (or tap the status icon) to force a sync immediately.
+
 ## Setup
 
 ### 1. Create a private repo and a token (once)
@@ -112,8 +117,8 @@ npm test           # runs sync unit tests + DOM smoke tests
 - `tests/sync.test.js` — exercises the op-reduce/LWW merge and a two-device sync
   against a mock GitHub API (no network).
 - `tests/dom.test.js` — boots the real `app.js` in a headless DOM and drives the UI:
-  add, check→bottom, edit qty, uncheck, delete, two-device join, and an offline edit
-  that reconciles on reconnect.
+  add, check→bottom, edit qty, uncheck, delete, two-device join, offline edits that
+  reconcile on reconnect, the sync status/error sheet, and pull-to-refresh.
 
 ## Project layout
 ```

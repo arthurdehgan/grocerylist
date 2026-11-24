@@ -79,6 +79,15 @@ function testReduce() {
   assert.strictEqual(doc.lists[0].items[0].name, 'Oat milk');
   assert.strictEqual(doc.lists[0].items[0].qty, '1L');
 
+  // `created` (add time) is stable across later edits/checks, while `ts` tracks LWW.
+  doc = reduce([
+    { id: 'a', ts: 1000, kind: 'item.add', listId: 'main', itemId: 'i1', name: 'Milk' },
+    { id: 'e1', ts: 4000, kind: 'item.edit', listId: 'main', itemId: 'i1', qty: '2L' },
+    { id: 'c1', ts: 5000, kind: 'item.check', listId: 'main', itemId: 'i1', checked: true },
+  ]);
+  assert.strictEqual(doc.lists[0].items[0].created, 1000, 'created stays at add time');
+  assert.strictEqual(doc.lists[0].items[0].ts, 5000, 'ts tracks the latest change');
+
   // Remove (tombstone) hides item and stays removed across orderings.
   doc = reduce([
     { id: 'a', ts: 1000, kind: 'item.add', listId: 'main', itemId: 'i1', name: 'Milk' },

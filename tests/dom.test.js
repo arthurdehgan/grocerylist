@@ -110,12 +110,12 @@ function makeMock() {
   rows = $$('#items .item');
   if (rows.length !== 2) throw new Error('expected 2 items, got ' + rows.length);
 
-  // alphabetical unchecked: Eggs before Milk
+  // insertion order (by date/time added): Milk added before Eggs
   const names = rows.map((r) => r.querySelector('.name').textContent);
-  if (names.join(',') !== 'Eggs,Milk') throw new Error('unchecked sort wrong: ' + names.join(','));
+  if (names.join(',') !== 'Milk,Eggs') throw new Error('unchecked sort should follow add order: ' + names.join(','));
 
   // ---- check Milk (first item) → should move to bottom ----
-  rows[1].querySelector('.check').click(); // Milk
+  rows[0].querySelector('.check').click(); // Milk
   await new Promise((r) => setTimeout(r, 50));
   rows = $$('#items .item');
   const afterCheck = rows.map((r) => ({

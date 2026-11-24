@@ -73,7 +73,10 @@
         }
         if (!map.has(op.listId)) map.set(op.listId, new Map());
         if (!map.get(op.listId).has(op.itemId) && op.ts >= (list._ts || 0)) {
-          const item = { id: op.itemId, name: op.name, qty: op.qty || '', checked: false, ts: op.ts };
+          const item = {
+            id: op.itemId, name: op.name, qty: op.qty || '', checked: false,
+            ts: op.ts, created: op.ts,
+          };
           list.items.push(item);
           map.get(op.listId).set(op.itemId, item);
         }

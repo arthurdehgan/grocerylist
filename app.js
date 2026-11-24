@@ -191,11 +191,11 @@
 
   function renderItems(list) {
     const items = list.items.slice();
-    // Unchecked first (alpha), then checked at the bottom (most-recently-checked first).
+    // Unchecked first, then checked at the bottom. Within each group, order by
+    // when the item was added (oldest first), not alphabetically.
     items.sort((a, b) => {
       if (a.checked !== b.checked) return a.checked ? 1 : -1;
-      if (a.checked) return (b.ts || 0) - (a.ts || 0);
-      return String(a.name).localeCompare(String(b.name));
+      return (a.created || a.ts || 0) - (b.created || b.ts || 0);
     });
 
     els.items.innerHTML = '';

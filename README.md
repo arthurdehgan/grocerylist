@@ -15,6 +15,7 @@ one phone reconcile with the other on reconnect.
 | Two users | A short **pairing code** (the file name). No accounts, no passwords. |
 | Edit from anywhere | Any device that loads the PWA and has the pairing code + token can read/write. |
 | Check → bottom | Unchecked items sort above checked ones; checking animates an item to the bottom. |
+| Order by add time | Within checked/unchecked groups, items are ordered by when they were added. |
 | Multiple lists/tabs | Each list has its own tab; add new lists with the **＋** tab. |
 
 ## How sync works (no server)

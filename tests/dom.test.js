@@ -110,12 +110,13 @@ function makeMock() {
   rows = $$('#items .item');
   if (rows.length !== 2) throw new Error('expected 2 items, got ' + rows.length);
 
-  // insertion order (by date/time added): Milk added before Eggs
+  // insertion order (by date/time added): most recent first, so Eggs above Milk
   const names = rows.map((r) => r.querySelector('.name').textContent);
-  if (names.join(',') !== 'Milk,Eggs') throw new Error('unchecked sort should follow add order: ' + names.join(','));
+  if (names.join(',') !== 'Eggs,Milk') throw new Error('unchecked sort should be newest first: ' + names.join(','));
 
-  // ---- check Milk (first item) → should move to bottom ----
-  rows[0].querySelector('.check').click(); // Milk
+  // ---- check Milk (second item) → should move to bottom ----
+  const milkRow0 = rows.find((r) => r.querySelector('.name').textContent === 'Milk');
+  milkRow0.querySelector('.check').click(); // Milk
   await new Promise((r) => setTimeout(r, 50));
   rows = $$('#items .item');
   const afterCheck = rows.map((r) => ({
@@ -142,11 +143,12 @@ function makeMock() {
   const qty = milkRow.querySelector('.qty');
   if (!qty || qty.textContent !== '2L') throw new Error('qty edit not reflected, got: ' + (qty ? qty.textContent : 'none'));
 
-  // ---- uncheck Milk → back to top ----
+  // ---- uncheck Milk → newest-first ordering, Milk (oldest) goes last ----
   milkRow.querySelector('.check').click();
   await new Promise((r) => setTimeout(r, 50));
   rows = $$('#items .item');
-  if (rows[0].classList.contains('checked')) throw new Error('Milk should be unchecked/on top');
+  if (rows[0].classList.contains('checked')) throw new Error('Eggs should be unchecked and on top');
+  if (rows[rows.length - 1].querySelector('.name').textContent !== 'Milk') throw new Error('Milk should be unchecked and last');
 
   // ---- delete Eggs via detail ----
   const eggsRow = rows.find((r) => r.querySelector('.name').textContent === 'Eggs');

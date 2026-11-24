@@ -77,18 +77,24 @@ that loads the app from `assets/` on a synthetic `https://appassets.androidplatf
 origin, so `localStorage` is reliable and `fetch()` to `api.github.com` works. The
 assets are bundled in the APK, so the shell itself needs no network — only sync does.
 
-```powershell
-# Build a signed APK (needs Android SDK: build-tools 36, platform android-37, JDK 17)
-powershell -ExecutionPolicy Bypass -File android\build.ps1
-# -> android/build/grocery.apk
+Both scripts below build a **signed** APK at `android/build/grocery.apk`. They re-copy
+`index.html`, `app.js`, `sync.js`, `styles.css`, `manifest.webmanifest`, `sw.js` and
+`icons/` from the repo root, so always rebuild after changing the web app. They assume
+the Android SDK is at the default location (macOS: `~/Library/Android/sdk`,
+Windows: `%LOCALAPPDATA%\Android\Sdk`) — set `ANDROID_SDK_ROOT` / `ANDROID_HOME` if
+yours is elsewhere. Requires build-tools 36, platform android-37, JDK 17+.
 
-# Install on a connected device
-adb install -r android\build\grocery.apk
+**macOS / Linux:**
+```sh
+./android/build.sh
+adb install -r android/build/grocery.apk   # install on a connected device
 ```
 
-`build.ps1` re-copies `index.html`, `app.js`, `sync.js`, `styles.css`,
-`manifest.webmanifest`, `sw.js` and `icons/` from the repo root, so always rebuild
-after changing the web app.
+**Windows:**
+```powershell
+powershell -ExecutionPolicy Bypass -File android\build.ps1
+adb install -r android\build\grocery.apk    # install on a connected device
+```
 
 **Signing key.** `android/keystore/grocery.keystore` (gitignored) signs the build.
 Android refuses to install an update signed with a *different* key, so keep this file
@@ -131,7 +137,7 @@ sync.js               Op model, LWW reduce, GitHub Contents API client
 manifest.webmanifest  PWA manifest (installable)
 sw.js                 Offline app-shell cache
 icons/                Generated PWA icons (192/512/maskable)
-android/              Native WebView shell + build script (see "Android app")
+android/              Native WebView shell + build scripts (see "Android app")
 tools/                Icon generators (pure-Python PNG writers)
 tests/                Unit + DOM tests (jsdom)
 ```

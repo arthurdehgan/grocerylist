@@ -192,10 +192,10 @@
   function renderItems(list) {
     const items = list.items.slice();
     // Unchecked first, then checked at the bottom. Within each group, order by
-    // when the item was added (oldest first), not alphabetically.
+    // when the item was added (most recent first), not alphabetically.
     items.sort((a, b) => {
       if (a.checked !== b.checked) return a.checked ? 1 : -1;
-      return (a.created || a.ts || 0) - (b.created || b.ts || 0);
+      return (b.created || b.ts || 0) - (a.created || a.ts || 0);
     });
 
     els.items.innerHTML = '';
@@ -256,9 +256,6 @@
 
   function toggleCheck(listId, item) {
     store.applyOp({ kind: 'item.check', listId, itemId: item.id, checked: !item.checked });
-    if (!item.checked) {
-      toast('Bought — moved to bottom');
-    }
   }
 
   els.addForm.addEventListener('submit', (e) => {

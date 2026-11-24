@@ -1,5 +1,5 @@
 /* sw.js — offline-first cache for the app shell. */
-const CACHE = 'grocery-v2';
+const CACHE = 'grocery-v4';
 const ASSETS = [
   './',
   './index.html',

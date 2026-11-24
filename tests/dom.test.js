@@ -253,7 +253,40 @@ function makeMock() {
   const names2 = Array.from(w2.document.querySelectorAll('#items .item .name')).map((n) => n.textContent);
   if (!names2.includes('Apples')) throw new Error('device 2 should receive pull-to-refresh Apples, got: ' + names2.join(','));
 
-  console.log('ok - DOM smoke: boot, add, check->bottom, edit qty, uncheck, delete, 2-device join, offline edit + reconcile, sync status + error sheet, pull-to-refresh');
+  // ---- create a new list via the tabs, add an item to it, switch back ----
+  const addListBtn = document.querySelector('#btn-add-list');
+  if (!addListBtn) throw new Error('add-list button should be present in the tabs');
+  addListBtn.click();
+  await new Promise((r) => setTimeout(r, 20));
+  if (document.querySelector('#list-sheet').hidden) throw new Error('new-list sheet should open');
+  document.querySelector('#new-list-name').value = 'Costco';
+  document.querySelector('#list-create').click();
+  await new Promise((r) => setTimeout(r, 60));
+
+  const tabNames = $$('#tabs .tab:not(.tab-add)').map((t) => t.textContent);
+  if (!tabNames.includes('Costco')) throw new Error('new list should appear as a tab, got: ' + tabNames.join(','));
+  if (document.querySelector('#list-title').textContent !== 'Costco') {
+    throw new Error('title should switch to the new list');
+  }
+
+  const costcoInput = document.querySelector('#add-input');
+  costcoInput.value = 'Paper towels';
+  document.querySelector('#add-form').dispatchEvent(new window.Event('submit', { cancelable: true, bubbles: true }));
+  await new Promise((r) => setTimeout(r, 60));
+  const costcoItems = $$('#items .item .name').map((n) => n.textContent);
+  if (costcoItems.join(',') !== 'Paper towels') {
+    throw new Error('new list should hold its own items, got: ' + costcoItems.join(','));
+  }
+
+  const groceryTab = $$('#tabs .tab').find((t) => t.textContent === 'Grocery');
+  if (!groceryTab) throw new Error('Grocery tab should still exist');
+  groceryTab.click();
+  await new Promise((r) => setTimeout(r, 40));
+  const groceryItems = $$('#items .item .name').map((n) => n.textContent);
+  if (!groceryItems.includes('Milk')) throw new Error('Grocery should still contain Milk, got: ' + groceryItems.join(','));
+  if (groceryItems.includes('Paper towels')) throw new Error('items must not leak across lists');
+
+  console.log('ok - DOM smoke: boot, add, check->bottom, edit qty, uncheck, delete, 2-device join, offline edit + reconcile, sync status + error sheet, pull-to-refresh, add list + per-list items');
   console.log('\nAll DOM tests passed.');
   process.exit(0);
 })().catch((e) => {

@@ -15,7 +15,7 @@ one phone reconcile with the other on reconnect.
 | Two users | A short **pairing code** (the file name). No accounts, no passwords. |
 | Edit from anywhere | Any device that loads the PWA and has the pairing code + token can read/write. |
 | Check → bottom | Unchecked items sort above checked ones; checking animates an item to the bottom. |
-| Future multiple lists/tabs | The model is already a list of lists; the UI renders tabs per list. |
+| Multiple lists/tabs | Each list has its own tab; add new lists with the **＋** tab. |
 
 ## How sync works (no server)
 
@@ -118,7 +118,8 @@ npm test           # runs sync unit tests + DOM smoke tests
   against a mock GitHub API (no network).
 - `tests/dom.test.js` — boots the real `app.js` in a headless DOM and drives the UI:
   add, check→bottom, edit qty, uncheck, delete, two-device join, offline edits that
-  reconcile on reconnect, the sync status/error sheet, and pull-to-refresh.
+  reconcile on reconnect, the sync status/error sheet, pull-to-refresh, and creating
+  extra lists with per-list items.
 
 ## Project layout
 ```
@@ -134,10 +135,12 @@ tools/                Icon generators (pure-Python PNG writers)
 tests/                Unit + DOM tests (jsdom)
 ```
 
-## Multiple lists (roadmap)
+## Multiple lists
 
-The data file already holds `lists: [{id, name, items: []}]`. Adding a tab bar that
-switches the active `listId` is the only UI work; sync and merge are unaffected.
+The data file holds `lists: [{id, name, items: []}]`. Tap the **＋** tab to create a
+new list (e.g. "Costco"); every list gets its own tab and its own items. Adding an item
+only affects the active list, and both phones see the same set of lists because
+`list.add` is just another op in the shared log.
 
 ## Security notes
 - The fine-grained token is scoped to one private repo with only Contents:RW. It cannot

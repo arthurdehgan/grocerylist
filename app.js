@@ -38,6 +38,10 @@
     syncSheetMessage: $('#sync-sheet-message'),
     syncSheetClose: $('#sync-sheet-close'),
     syncSheetRetry: $('#sync-sheet-retry'),
+    listSheet: $('#list-sheet'),
+    newListName: $('#new-list-name'),
+    listCancel: $('#list-cancel'),
+    listCreate: $('#list-create'),
     toast: $('#toast'),
   };
 
@@ -161,16 +165,12 @@
   }
 
   function renderTabs(doc) {
-    if (!doc.lists || doc.lists.length <= 1) {
-      els.tabs.hidden = true;
-      els.tabs.innerHTML = '';
-      return;
-    }
     els.tabs.hidden = false;
     els.tabs.innerHTML = '';
     for (const l of doc.lists) {
       const b = document.createElement('button');
       b.className = 'tab' + (l.id === doc.activeList ? ' active' : '');
+      b.type = 'button';
       b.textContent = l.name;
       b.addEventListener('click', () => {
         store.setActiveList(l.id);
@@ -178,6 +178,15 @@
       });
       els.tabs.appendChild(b);
     }
+    const add = document.createElement('button');
+    add.id = 'btn-add-list';
+    add.className = 'tab tab-add';
+    add.type = 'button';
+    add.title = 'Add list';
+    add.setAttribute('aria-label', 'Add list');
+    add.textContent = '＋';
+    add.addEventListener('click', openListSheet);
+    els.tabs.appendChild(add);
   }
 
   function renderItems(list) {
@@ -302,6 +311,37 @@
     store.applyOp({ kind: 'item.remove', listId: editing.listId, itemId: editing.itemId });
     closeDetail();
     toast('Deleted');
+  });
+
+  /* ---------- new list sheet ---------- */
+  function openListSheet() {
+    els.newListName.value = '';
+    els.listSheet.hidden = false;
+    setTimeout(() => { els.newListName.focus(); }, 30);
+  }
+
+  function closeListSheet() {
+    els.listSheet.hidden = true;
+  }
+
+  function createList() {
+    const name = els.newListName.value.trim();
+    if (!name) { els.newListName.focus(); return; }
+    const listId = 'list-' + uid();
+    store.applyOp({ kind: 'list.add', listId, name });
+    store.setActiveList(listId);
+    closeListSheet();
+    render(store.state());
+    toast('Created ' + name);
+  }
+
+  els.listCancel.addEventListener('click', closeListSheet);
+  els.listSheet.addEventListener('click', (e) => {
+    if (e.target === els.listSheet) closeListSheet();
+  });
+  els.listCreate.addEventListener('click', createList);
+  els.newListName.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); createList(); }
   });
 
   /* ---------- settings ---------- */

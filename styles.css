@@ -164,6 +164,16 @@ button.danger { background: transparent; color: var(--danger); width: 100%; marg
   white-space: nowrap;
 }
 .tab.active { background: #e8efe8; color: #1d5b20; }
+.tab.tab-add {
+  flex: 0 0 auto;
+  min-width: 40px;
+  border: 1px dashed var(--line);
+  color: var(--muted);
+  font-size: 1.2rem;
+  line-height: 1;
+  padding: 6px 12px;
+}
+.tab.tab-add:active { background: #e8efe8; }
 
 /* add bar */
 .addbar {
